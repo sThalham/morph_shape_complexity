@@ -32,6 +32,8 @@ def morphological_complexity(mesh_path):
     # Parameters: pairs ((n, 2, 3) float) – Unit vector pairs
     # Returns: angles – Angles between vectors in radians
     # Return type: (n,) float
+    bins = 128
+    radius = 3.0
 
     #pcd = o3d.io.read_point_cloud(mesh_path)
     #o3d.visualization.draw_geometries([pcd])
@@ -50,7 +52,7 @@ def morphological_complexity(mesh_path):
     #triangles = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(downpcd, o3d.utility.DoubleVector(radii))
     #o3d.visualization.draw_geometries([triangles])
     triangles = o3d.io.read_triangle_mesh(mesh_path)
-    triangles = triangles.simplify_vertex_clustering(voxel_size=3.0)
+    triangles = triangles.simplify_vertex_clustering(voxel_size=radius)
     if not triangles.has_adjacency_list():
         triangles = triangles.compute_adjacency_list()
     if not triangles.has_triangle_normals():
@@ -77,7 +79,7 @@ def morphological_complexity(mesh_path):
             that_angle = angle_between(theNormals[idx, :], theNormals[neighb, :])
             # center and shift!
             #that_angle = (that_angle - np.pi/2) * 4
-            that_angle = that_angle / np.pi
+            #that_angle = that_angle / np.pi
             flat_angles.append(that_angle)
         already_considered.append(idx)
         #print('adjs: ', currentAdj)
@@ -85,7 +87,6 @@ def morphological_complexity(mesh_path):
     vertex_angles = np.array(flat_angles)
 
     #print('angles: ', vertex_angles.shape)
-    #print('min/max: ', np.min(vertex_angles), np.max(vertex_angles))
     #sys.exit()
     #mesh = trimesh.load(mesh_path)
     # Compute internal angles per vertex
@@ -99,11 +100,16 @@ def morphological_complexity(mesh_path):
     # Create Normalised Histogram
     #hist = np.histogram(vertex_angles, bins=32, range=(0, np.pi))[0].astype(np.float)
     #hist = np.histogram(vertex_angles, bins=512, range=(-2*np.pi, 2*np.pi))[0].astype(np.float64)
-    hist = np.histogram(vertex_angles, bins=512, range=(0, 1.0))[0].astype(np.float)
-    hist /= hist.sum()
+    hist = np.histogram(vertex_angles, bins=bins, range=(0.0, np.pi))[0].astype(np.float64)
+    #hist /= hist.sum()
+    hist /= np.max(hist)
 
-    plt.hist(range(512), 512, weights=hist)
-    plt.show()
+    #plt.hist(range(bins), bins, weights=hist)
+    #plt.show()
+    #H_norm = np.repeat(np.array([0.5]), axis=0, repeats=bins)
+    #H_norm = -1 * (H_norm * np.log2(H_norm+1e-6)).sum()
+
+    #print('hist: ', hist)
 
     # Compute entropy
     H = -1 * (hist * np.log2(hist+1e-6)).sum()
