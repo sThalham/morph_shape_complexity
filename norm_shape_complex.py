@@ -3,6 +3,7 @@ import trimesh
 import sys
 import os
 import open3d as o3d
+import matplotlib.pyplot as plt
 
 #############################################
 # shamelessly stolen from: https://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python
@@ -62,9 +63,9 @@ def morphological_complexity(mesh_path):
     #theVertices = np.asarray(triangles.vertices)
     theTriangles = np.asarray(triangles.triangles)
     #print(np.array(theAdjacencies[0]).shape)
-    print('Normals: ', theNormals.shape)
+    #print('Normals: ', theNormals.shape)
     #print(theVertices.shape)
-    print('Triangles: ', theTriangles.shape)
+    #print('Triangles: ', theTriangles.shape)
 
     flat_angles = []
     already_considered = []
@@ -74,14 +75,17 @@ def morphological_complexity(mesh_path):
             if neighb in already_considered:
                 continue
             that_angle = angle_between(theNormals[idx, :], theNormals[neighb, :])
+            # center and shift!
+            #that_angle = (that_angle - np.pi/2) * 4
+            that_angle = that_angle / np.pi
             flat_angles.append(that_angle)
         already_considered.append(idx)
         #print('adjs: ', currentAdj)
         #that_angle = angle_between()
     vertex_angles = np.array(flat_angles)
 
-    print('angles: ', vertex_angles.shape)
-    print('min/max: ', np.min(vertex_angles), np.max(vertex_angles))
+    #print('angles: ', vertex_angles.shape)
+    #print('min/max: ', np.min(vertex_angles), np.max(vertex_angles))
     #sys.exit()
     #mesh = trimesh.load(mesh_path)
     # Compute internal angles per vertex
@@ -93,8 +97,14 @@ def morphological_complexity(mesh_path):
     #unique_vertices = np.unique(flat_vertices)
     #vertex_angles = np.array([2*np.pi - flat_angles[flat_vertices == v_id].sum() for v_id in unique_vertices])
     # Create Normalised Histogram
-    hist = np.histogram(vertex_angles, bins=512, range=(0, np.pi))[0].astype(np.float)
+    #hist = np.histogram(vertex_angles, bins=32, range=(0, np.pi))[0].astype(np.float)
+    #hist = np.histogram(vertex_angles, bins=512, range=(-2*np.pi, 2*np.pi))[0].astype(np.float64)
+    hist = np.histogram(vertex_angles, bins=512, range=(0, 1.0))[0].astype(np.float)
     hist /= hist.sum()
+
+    plt.hist(range(512), 512, weights=hist)
+    plt.show()
+
     # Compute entropy
     H = -1 * (hist * np.log2(hist+1e-6)).sum()
     H = max(0, H)
@@ -118,6 +128,7 @@ def main(args):
             #theMesh = theMesh.submesh([valid_indexes])[0]
             #theMesh.show()
 
+            print('Processing object ', int(mesh_name[4:-4])-1)
             shape_complex = morphological_complexity(path_to_mesh)
             complexities[int(mesh_name[4:-4])-1] = shape_complex
     return complexities

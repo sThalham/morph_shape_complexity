@@ -2,6 +2,7 @@ import numpy as np
 import trimesh
 import sys
 import os
+import matplotlib.pyplot as plt
 
 
 def morphological_complexity(mesh):
@@ -23,6 +24,10 @@ def morphological_complexity(mesh):
     # Create Normalised Histogram
     hist = np.histogram(vertex_angles, bins=512, range=(-np.pi*2, np.pi*2))[0].astype(np.float)
     hist /= hist.sum()
+
+    plt.hist(range(512), 512, weights=hist)
+    plt.show()
+
     # Compute entropy
     H = -1 * (hist * np.log2(hist+1e-6)).sum()
     H = max(0, H)
