@@ -32,8 +32,8 @@ def morphological_complexity(mesh_path):
     # Parameters: pairs ((n, 2, 3) float) – Unit vector pairs
     # Returns: angles – Angles between vectors in radians
     # Return type: (n,) float
-    bins = 128
-    radius = 3.0
+    bins = 256
+    radius = 1.5
 
     #pcd = o3d.io.read_point_cloud(mesh_path)
     #o3d.visualization.draw_geometries([pcd])
@@ -90,16 +90,14 @@ def morphological_complexity(mesh_path):
     #sys.exit()
     #mesh = trimesh.load(mesh_path)
     # Compute internal angles per vertex
-    #print(mesh.faces.shape)
     #flat_vertices = mesh.faces.flatten()
-    #print(flat_vertices.shape)
     #flat_angles = mesh.face_angles.flatten()
-    #print('angle: ', flat_angles.shape)
     #unique_vertices = np.unique(flat_vertices)
     #vertex_angles = np.array([2*np.pi - flat_angles[flat_vertices == v_id].sum() for v_id in unique_vertices])
     # Create Normalised Histogram
     #hist = np.histogram(vertex_angles, bins=32, range=(0, np.pi))[0].astype(np.float)
-    #hist = np.histogram(vertex_angles, bins=512, range=(-2*np.pi, 2*np.pi))[0].astype(np.float64)
+    #hist = np.histogram(vertex_angles, bins=16, range=(-2*np.pi, 2*np.pi))[0].astype(np.float64)
+
     hist = np.histogram(vertex_angles, bins=bins, range=(0.0, np.pi))[0].astype(np.float64)
     #hist /= hist.sum()
     hist /= np.max(hist)
@@ -111,8 +109,10 @@ def morphological_complexity(mesh_path):
 
     #print('hist: ', hist)
 
+    # compute integral
+    H = np.sum(hist)
     # Compute entropy
-    H = -1 * (hist * np.log2(hist+1e-6)).sum()
+    #H = -1 * (hist * np.log2(hist+1e-6)).sum()
     H = max(0, H)
     return H
 
@@ -120,9 +120,13 @@ def morphological_complexity(mesh_path):
 def main(args):
     mesh_path = args
 
-    complexities = [None] * len(os.listdir(mesh_path))
+    complexities = [None] * (len(os.listdir(mesh_path))-1)
+    if len(os.listdir(mesh_path)) == 16: # linemod
+        complexities = [None] * 13
     for mesh_name in os.listdir(mesh_path):
         if mesh_name.endswith('.ply'):
+            if len(os.listdir(mesh_path)) == 16 and int(mesh_name[4:-4]) in [3, 7]:
+                continue
             path_to_mesh = os.path.join(mesh_path, mesh_name)
             #theMesh = trimesh.load(path_to_mesh)
 
@@ -134,9 +138,14 @@ def main(args):
             #theMesh = theMesh.submesh([valid_indexes])[0]
             #theMesh.show()
 
-            print('Processing object ', int(mesh_name[4:-4])-1)
+            print('Processing object ', int(mesh_name[4:-4]))
             shape_complex = morphological_complexity(path_to_mesh)
-            complexities[int(mesh_name[4:-4])-1] = shape_complex
+            if len(os.listdir(mesh_path)) == 16 and int(mesh_name[4:-4]) > 7:
+                complexities[int(mesh_name[4:-4]) - 3] = shape_complex
+            elif len(os.listdir(mesh_path)) == 16 and int(mesh_name[4:-4]) > 3:
+                complexities[int(mesh_name[4:-4]) - 2] = shape_complex
+            else:
+                complexities[int(mesh_name[4:-4])-1] = shape_complex
     return complexities
 
 
@@ -144,6 +153,24 @@ if __name__ == '__main__':
     comp1 = main(sys.argv[1])
     comp2 = main(sys.argv[2])
 
-    print(os.path.split(sys.argv[1])[-1], os.path.split(sys.argv[2])[-1])
+    #print(os.path.split(sys.argv[1])[-1], os.path.split(sys.argv[2])[-1])
     for i in range(len(comp1)):
-        print('obj ', i+1, ': ', comp1[i], comp2[i])
+        print('obj ', i+1, ': ', comp1[i])#, comp2[i])
+
+    tless_o = np.array([23.2, 32.4, 38.5, 21.0, 85.8, 84.7, 82.0, 80.0, 86.6, 81.8, 64.6, 83.5, 57.9, 69.2, 72.6, 61.7, 93.2, 91.8, 71.7, 60.8, 62.9, 60.1, 69.0, 79.7, 81.1, 78.8, 91.7, 61.5, 87.8, 59.7])
+    tless_r = np.array([25.6, 31.3, 36.7, 24.1, 93.7, 87.8, 91.2, 98.0, 95.1, 93.0, 66.3, 82.7, 55.7, 72.6, 74.7, 63.8, 95.2, 93.2, 69.6, 51.3, 65.1, 58.0, 72.2, 77.1, 83.2, 86.9, 86.5, 68.8, 89.8, 84.7])
+    tless_d = tless_r / tless_o
+
+    lm_o = np.array([59.5, 84.0, 56.0, 81.5, 59.5, 77.0, 28.5, 69.5, 65.0, 21.0, 86.0, 82.5, 36.5])
+    lm_r = np.array([40.5, 77.5, 36.0, 77.5, 59.5, 67.5, 32.0, 49.5, 57.5, 23.5, 64.0, 77.5, 47.5])
+    lm_d = lm_r / lm_o
+
+    deltas = np.concatenate([lm_d, tless_d])
+    compx = np.concatenate([comp1, comp2])
+
+    sort_comp = np.argsort(compx)
+    sorted_plex = compx[sort_comp]
+    sorted_delta = deltas[sort_comp]
+
+    plt.plot(sorted_plex, sorted_delta)
+    plt.show()
